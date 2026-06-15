@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Added: New function Connect-SqlServer
 * Changed: Update the DB Copy command to support daily diff backups (Invoke-SqlDbCopy)
+* Fixed: Align the output of the transaction log commands to the module (Get-SqlDbTrxLogState, Invoke-SqlDbTrxLogShrink)
 
 ## 0.4.2 - 2020-07-14
 
