@@ -65,6 +65,9 @@
         "Logfile",
         "LOGINFO",
         "NEWNAME",
-        "SHRINKFILE"
+        "SERVERPROPERTY",
+        "SHRINKFILE",
+        "SPID",
+        "tempdb"
     ]
 }

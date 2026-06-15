@@ -5,7 +5,7 @@
     .DESCRIPTION
         Test the connection to a SQL Server. Currently only the .NET SqlClient
         provider is supported. In the quiet mode, the command only returns $true
-        if the connection was successful or $false if any error occured. In the
+        if the connection was successful or $false if any error occurred. In the
         normal mode, a result object with details about the SQL Server is
         returned or an exception will be thrown.
 
@@ -169,7 +169,7 @@ function Test-SqlConnection
             }
             catch
             {
-                Write-Warning "Error occured while getting connection information: $_"
+                Write-Warning "Error occurred while getting connection information: $_"
             }
             finally
             {
