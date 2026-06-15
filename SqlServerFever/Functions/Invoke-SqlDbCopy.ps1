@@ -123,14 +123,14 @@ function Invoke-SqlDbCopy
         }
     }
 
-    if ($PSCmdlet.ShouldProcess("SQL Server: $DestinationSqlInstance, Database: $DestinationDatabaseName", "Restore Database (with replace)"))
+    $backupPaths = @($fullBackup.Path)
+    if ($null -ne $diffBackup)
     {
-        $backupPaths = @($fullBackup.Path)
-        if ($null -ne $diffBackup)
-        {
-            $backupPaths += $diffBackup.Path
-        }
+        $backupPaths += $diffBackup.Path
+    }
 
+    if ($PSCmdlet.ShouldProcess("SQL Server: $DestinationSqlInstance, Database: $DestinationDatabaseName, Backups: $($backupPaths -join ', ')", "Restore Database (with replace)"))
+    {
         Write-Verbose "[Invoke-SqlDbCopy] Restore database '$DestinationDatabaseName' to SQL Server '$DestinationSqlInstance' using path '$($backupPaths -join "', '")'."
 
         # Perform the database restore on the destination SQL Server.
