@@ -56,7 +56,20 @@ function Invoke-SqlDbCopy
         # the source database.
         [Parameter(Mandatory = $false)]
         [System.String]
-        $DestinationDatabaseName
+        $DestinationDatabaseName,
+
+        # Option to skip renaming the logical file names to match the physical
+        # file names. By default, the logical file names are renamed to match
+        # the physical file names to avoid issues with database files.
+        [Parameter(Mandatory = $false)]
+        [Switch]
+        $SkipLogicalFileRename,
+
+        # Option to skip changing the database owner to sa. By default, the
+        # database owner is changed to sa to avoid issues with orphaned users.
+        [Parameter(Mandatory = $false)]
+        [Switch]
+        $SkipOwnerChange
     )
 
     # Define and verify the connection splat to the source SQL Server.
@@ -123,23 +136,29 @@ function Invoke-SqlDbCopy
         # Perform the database restore on the destination SQL Server.
         $restoreResult = Restore-DbaDatabase @sqlDestination -Path $fullBackup.Path -DatabaseName $DestinationDatabaseName -ReplaceDbNameInFile -WithReplace
 
-        Write-Verbose "[Invoke-SqlDbCopy] On SQL Server '$DestinationSqlInstance' update database '$DestinationDatabaseName' owner to 'sa'."
-
         # Restore the owner to sa.
-        Invoke-DbaQuery @sqlDestination -Database $DestinationDatabaseName -Query "ALTER AUTHORIZATION ON DATABASE::[$DestinationDatabaseName] TO [sa]"
+        if (-not $SkipOwnerChange.IsPresent)
+        {
+            Write-Verbose "[Invoke-SqlDbCopy] On SQL Server '$DestinationSqlInstance' update database '$DestinationDatabaseName' owner to 'sa'."
+
+            Invoke-DbaQuery @sqlDestination -Database $DestinationDatabaseName -Query "ALTER AUTHORIZATION ON DATABASE::[$DestinationDatabaseName] TO [sa]"
+        }
 
         # Get all files and rename their logical file names, if they do not match
-        # the physical file name.
-        $files = Get-DbaDbFile @sqlDestination -Database $DestinationDatabaseName
-        foreach ($file in $files)
+        # the physical file name. Only if not skipped.
+        if (-not $SkipLogicalFileRename.IsPresent)
         {
-            $actualLogicalName   = $file.LogicalName
-            $expectedLogicalName = [System.IO.Path]::GetFileNameWithoutExtension($file.PhysicalName)
-            if ($actualLogicalName -ne $expectedLogicalName)
+            $files = Get-DbaDbFile @sqlDestination -Database $DestinationDatabaseName
+            foreach ($file in $files)
             {
-                Write-Verbose "[Invoke-SqlDbCopy] On SQL Server '$DestinationSqlInstance' rename database '$DestinationDatabaseName' logical file '$actualLogicalName' to '$expectedLogicalName'."
+                $actualLogicalName   = $file.LogicalName
+                $expectedLogicalName = [System.IO.Path]::GetFileNameWithoutExtension($file.PhysicalName)
+                if ($actualLogicalName -ne $expectedLogicalName)
+                {
+                    Write-Verbose "[Invoke-SqlDbCopy] On SQL Server '$DestinationSqlInstance' rename database '$DestinationDatabaseName' logical file '$actualLogicalName' to '$expectedLogicalName'."
 
-                Invoke-DbaQuery @sqlDestination -Database $DestinationDatabaseName -Query "ALTER DATABASE [$DestinationDatabaseName] MODIFY FILE (NAME=N'$actualLogicalName', NEWNAME=N'$expectedLogicalName')"
+                    Invoke-DbaQuery @sqlDestination -Database $DestinationDatabaseName -Query "ALTER DATABASE [$DestinationDatabaseName] MODIFY FILE (NAME=N'$actualLogicalName', NEWNAME=N'$expectedLogicalName')"
+                }
             }
         }
 
