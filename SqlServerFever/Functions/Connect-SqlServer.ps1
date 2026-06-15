@@ -14,12 +14,6 @@
         - *-Sql*:ServerInstance
         - *-Sql*:Credential
 
-    .INPUTS
-        None.
-
-    .OUTPUTS
-        None.
-
     .LINK
         https://github.com/claudiospizzi/SqlServerFever
 #>
@@ -33,7 +27,8 @@ function Connect-SqlServer
         [System.String]
         $SqlInstance,
 
-        # SQL Login. If not specified, use integrated security.
+        # SQL credential. If not specified, use the integrated Windows
+        # authentication.
         [Parameter(Mandatory = $false)]
         [ValidateNotNull()]
         [System.Management.Automation.PSCredential]
