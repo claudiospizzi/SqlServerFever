@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 * Added: New function Connect-SqlServer
+* Changed: Update the DB Copy command to support daily diff backups (Invoke-SqlDbCopy)
 
 ## 0.4.2 - 2020-07-14
 
@@ -15,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.4.1 - 2020-07-10
 
-* Fixed: Issue not shrinking a transaction log im some cases
+* Fixed: Issue not shrinking a transaction log in some cases
 
 ## 0.4.0 - 2020-07-08
 

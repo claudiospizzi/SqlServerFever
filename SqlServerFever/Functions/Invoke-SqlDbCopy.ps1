@@ -6,6 +6,19 @@
         This command will resolve the common use case of a database copy
         required to copy a production system database back to a test or
         development system.
+
+    .EXAMPLE
+        Invoke-SqlDbCopy -SourceSqlInstance 'SQL01' -SourceDatabaseName 'AdventureWorks' -DestinationSqlInstance 'SQL02'
+        This command will copy the AdventureWorks database from SQL01 to SQL02.
+        The destination database will keep the database name.
+
+    .EXAMPLE
+        Invoke-SqlDbCopy -SourceSqlInstance 'SQL01' -SourceDatabaseName 'AdventureWorks' -DestinationDatabaseName 'AdventureWorks_Test'
+        This command will copy the AdventureWorks database within SQL01 to a
+        new database named AdventureWorks_Test.
+
+    .LINK
+        https://github.com/claudiospizzi/SqlServerFever
 #>
 function Invoke-SqlDbCopy
 {
@@ -78,23 +91,39 @@ function Invoke-SqlDbCopy
         $DestinationDatabaseName = $SourceDatabaseName
     }
 
-    Write-Verbose "SQL DB COPY: Query last full disk backup from database '$SourceDatabaseName' on SQL Server '$SourceSqlInstance'."
+    Write-Verbose "[Invoke-SqlDbCopy] Query last full and diff disk backup for database '$SourceDatabaseName' on SQL Server '$SourceSqlInstance'."
 
-    # Get and check the last full backup from the source SQL Server.
-    $backup = Get-DbaDbBackupHistory @sqlSource -Database $SourceDatabaseName -DeviceType 'Disk' -LastFull
-    if ($null -eq $backup)
+    # Get and check the last full backup for the source SQL Server.
+    $fullBackup = Get-DbaDbBackupHistory @sqlSource -Database $SourceDatabaseName -DeviceType 'Disk' -LastFull
+    if ($null -eq $fullBackup)
     {
         throw "Last full backup to disk not found for database '$SourceDatabaseName' on SQL Server '$SourceSqlInstance'."
     }
 
-    if ($PSCmdlet.ShouldProcess("SQL Server $DestinationSqlInstance", "Restore Database $DestinationDatabaseName"))
+    # Get the last diff backup for the source SQL Server and check if it's after the full backup
+    $diffBackup = Get-DbaDbBackupHistory @sqlSource -Database $SourceDatabaseName -DeviceType 'Disk' -LastDiff
+    if ($null -ne $diffBackup)
     {
-        Write-Verbose "SQL DB COPY: Restore database '$DestinationDatabaseName' to SQL Server '$DestinationSqlInstance' from path '$($backup.Path)'."
+        if ($diffBackup.Start -lt $fullBackup.Start)
+        {
+            $diffBackup = $null
+        }
+    }
 
-        # Performe the database restore on the destination SQL Server.
-        Restore-DbaDatabase @sqlDestination -Path $backup.Path -DatabaseName $DestinationDatabaseName -ReplaceDbNameInFile -WithReplace
+    if ($PSCmdlet.ShouldProcess("SQL Server: $DestinationSqlInstance, Database: $DestinationDatabaseName", "Restore Database (with replace)"))
+    {
+        $backupPaths = @($fullBackup.Path)
+        if ($null -ne $diffBackup)
+        {
+            $backupPaths += $diffBackup.Path
+        }
 
-        Write-Verbose "SQL DB COPY: Update database '$DestinationDatabaseName' owner to 'sa'."
+        Write-Verbose "[Invoke-SqlDbCopy] Restore database '$DestinationDatabaseName' to SQL Server '$DestinationSqlInstance' using path '$($backupPaths -join "', '")'."
+
+        # Perform the database restore on the destination SQL Server.
+        $restoreResult = Restore-DbaDatabase @sqlDestination -Path $fullBackup.Path -DatabaseName $DestinationDatabaseName -ReplaceDbNameInFile -WithReplace
+
+        Write-Verbose "[Invoke-SqlDbCopy] On SQL Server '$DestinationSqlInstance' update database '$DestinationDatabaseName' owner to 'sa'."
 
         # Restore the owner to sa.
         Invoke-DbaQuery @sqlDestination -Database $DestinationDatabaseName -Query "ALTER AUTHORIZATION ON DATABASE::[$DestinationDatabaseName] TO [sa]"
@@ -108,10 +137,12 @@ function Invoke-SqlDbCopy
             $expectedLogicalName = [System.IO.Path]::GetFileNameWithoutExtension($file.PhysicalName)
             if ($actualLogicalName -ne $expectedLogicalName)
             {
-                Write-Verbose "SQL DB COPY: Rename database '$DestinationDatabaseName' logical file '$actualLogicalName' to '$expectedLogicalName'."
+                Write-Verbose "[Invoke-SqlDbCopy] On SQL Server '$DestinationSqlInstance' rename database '$DestinationDatabaseName' logical file '$actualLogicalName' to '$expectedLogicalName'."
 
                 Invoke-DbaQuery @sqlDestination -Database $DestinationDatabaseName -Query "ALTER DATABASE [$DestinationDatabaseName] MODIFY FILE (NAME=N'$actualLogicalName', NEWNAME=N'$expectedLogicalName')"
             }
         }
+
+        Write-Output $restoreResult
     }
 }
