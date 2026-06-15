@@ -13,14 +13,20 @@ This Module should help to work with SQL Server for operations and migrations.
 
 ## Features
 
-* ****  
-  ..
+* **Connect-SqlServer**  
+  Validate the connection details and store them in the default parameter values for SQL commands.
 
-* ****  
-  ..
+* **Test-SqlConnection**  
+  Test the SQL connection to a target SQL Server and return details like protocol, encryption, version, edition, uptime and more.
 
-* ****  
-  ..
+* **Invoke-SqlDbCopy**  
+  Invoke a SQL Server database copy with full control over source/target server and database. It will rename SQL files and set the owner to the default sa user.
+
+* **Get-SqlDbTrxLogState**  
+  Get the current state of a transaction log file for a database, including the number of virtual log files (VLFs) and the file size in MB.
+
+* **Invoke-SqlDbTrxLogShrink**  
+  Invoke a shrink operation for a transaction log file of a database. As the shrinking requires a process of transaction log backup and shrink operations, they are combined in this command.
 
 ## Versions
 
